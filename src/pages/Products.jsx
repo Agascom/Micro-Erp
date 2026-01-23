@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react';
 import { productService } from '../services/productService';
 import { categoryService } from '../services/categoryService';
 import { formatCurrency } from '../utils/currency';
+import { useToast } from '../contexts/ToastContext';
 
 const Products = () => {
+    const { addToast } = useToast();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -14,6 +16,7 @@ const Products = () => {
     const [formData, setFormData] = useState({
         code: '',
         name: '',
+        type: 'goods', // 'goods' or 'service'
         stock_level: 0,
         sale_price: 0,
         category_id: ''
@@ -46,15 +49,18 @@ const Products = () => {
         try {
             if (editingProduct) {
                 await productService.update(editingProduct.id, formData);
+                addToast('Produit mis à jour avec succès', 'success');
             } else {
                 await productService.create(formData);
+                addToast('Produit créé avec succès', 'success');
             }
             setShowModal(false);
             setEditingProduct(null);
-            setFormData({ code: '', name: '', stock_level: 0, sale_price: 0, category_id: '' });
+            setFormData({ code: '', name: '', type: 'goods', stock_level: 0, sale_price: 0, category_id: '' });
             fetchData();
         } catch (err) {
             setError(err.response?.data?.message || 'Erreur lors de la sauvegarde');
+            addToast('Erreur lors de la sauvegarde', 'error');
         } finally {
             setSubmitting(false);
         }
@@ -65,6 +71,7 @@ const Products = () => {
         setFormData({
             code: product.code,
             name: product.name,
+            type: product.type || 'goods',
             stock_level: product.stock_level,
             sale_price: product.sale_price,
             category_id: product.category_id
@@ -76,14 +83,14 @@ const Products = () => {
         if (confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
             try {
                 await productService.delete(id);
+                addToast('Produit supprimé avec succès', 'info');
                 fetchData();
             } catch (err) {
                 setError('Erreur lors de la suppression');
+                addToast('Impossible de supprimer le produit', 'error');
             }
         }
     };
-
-
 
     if (loading) {
         return (
@@ -108,7 +115,7 @@ const Products = () => {
                 <button
                     onClick={() => {
                         setEditingProduct(null);
-                        setFormData({ code: '', name: '', stock_level: 0, sale_price: 0, category_id: '' });
+                        setFormData({ code: '', name: '', type: 'goods', stock_level: 0, sale_price: 0, category_id: '' });
                         setShowModal(true);
                     }}
                     className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transition-all"
@@ -129,13 +136,14 @@ const Products = () => {
             )}
 
             {/* Products Table */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mt-6">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Code</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Nom</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Type</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Catégorie</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Stock</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Prix</th>
@@ -145,7 +153,7 @@ const Products = () => {
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {products.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan="7" className="px-6 py-12 text-center text-slate-500">
                                         Aucun produit trouvé
                                     </td>
                                 </tr>
@@ -154,19 +162,32 @@ const Products = () => {
                                     <tr key={product.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                         <td className="px-6 py-4 font-mono text-sm text-purple-600">{product.code}</td>
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{product.name}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                product.type === 'service' 
+                                                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' 
+                                                    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                                            }`}>
+                                                {product.type === 'service' ? 'Service' : 'Bien'}
+                                            </span>
+                                        </td>
                                         <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
                                             {product.category?.name || '-'}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                                product.stock_level <= 5 
-                                                    ? 'bg-red-100 text-red-600' 
-                                                    : product.stock_level <= 20 
-                                                        ? 'bg-amber-100 text-amber-600' 
-                                                        : 'bg-emerald-100 text-emerald-600'
-                                            }`}>
-                                                {product.stock_level} unités
-                                            </span>
+                                            {product.type === 'service' ? (
+                                                <span className="text-slate-400 text-xs italic">N/A</span>
+                                            ) : (
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                                    product.stock_level <= 5 
+                                                        ? 'bg-red-100 text-red-600' 
+                                                        : product.stock_level <= 20 
+                                                            ? 'bg-amber-100 text-amber-600' 
+                                                            : 'bg-emerald-100 text-emerald-600'
+                                                }`}>
+                                                    {product.stock_level} unités
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">
                                             {formatCurrency(product.sale_price)}
@@ -227,33 +248,51 @@ const Products = () => {
                                     placeholder="Nom du produit"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Catégorie</label>
-                                <select
-                                    value={formData.category_id}
-                                    onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                                    required
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                                >
-                                    <option value="">Sélectionner une catégorie</option>
-                                    {categories.map((cat) => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            
+                            {/* Type Selector */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Stock</label>
-                                    <input
-                                        type="number"
-                                        value={formData.stock_level}
-                                        onChange={(e) => setFormData({ ...formData, stock_level: parseInt(e.target.value) })}
-                                        min="0"
-                                        required
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Type</label>
+                                    <select 
+                                        value={formData.type}
+                                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                                    />
+                                    >
+                                        <option value="goods">Bien</option>
+                                        <option value="service">Service</option>
+                                    </select>
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Catégorie</label>
+                                    <select
+                                        value={formData.category_id}
+                                        onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                                        required
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                    >
+                                        <option value="">Sélectionner une catégorie</option>
+                                        {categories.map((cat) => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {formData.type === 'goods' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Stock</label>
+                                        <input
+                                            type="number"
+                                            value={formData.stock_level}
+                                            onChange={(e) => setFormData({ ...formData, stock_level: parseInt(e.target.value) })}
+                                            min="0"
+                                            required
+                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                )}
+                                <div className={formData.type === 'service' ? 'col-span-2' : ''}>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Prix (FCFA)</label>
                                     <input
                                         type="number"
@@ -266,6 +305,7 @@ const Products = () => {
                                     />
                                 </div>
                             </div>
+
                             <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"

@@ -26,4 +26,9 @@ export const invoiceService = {
         const response = await API.delete(`/invoices/${id}`);
         return response.data;
     },
+
+    async downloadPdf(id) {
+        const response = await API.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
+        return response.data;
+    },
 };

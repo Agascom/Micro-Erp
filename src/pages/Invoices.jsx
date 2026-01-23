@@ -4,8 +4,12 @@ import { invoiceService } from '../services/invoiceService';
 import { clientService } from '../services/clientService';
 import { productService } from '../services/productService';
 import { formatCurrency } from '../utils/currency';
+import { useToast } from '../contexts/ToastContext';
+import InvoiceTemplate from '../components/InvoiceTemplate';
+import PrintInvoice from '../components/PrintInvoice';
 
 const Invoices = () => {
+    const { addToast } = useToast();
     const [invoices, setInvoices] = useState([]);
     const [clients, setClients] = useState([]);
     const [products, setProducts] = useState([]);
@@ -13,6 +17,7 @@ const Invoices = () => {
     const [error, setError] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [showDetailModal, setShowDetailModal] = useState(false);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [formData, setFormData] = useState({
         invoice_number: '',
@@ -69,8 +74,10 @@ const Invoices = () => {
                 items: [{ product_id: '', quantity: 1, unit_price: 0 }]
             });
             fetchData();
+            addToast('Facture créée avec succès', 'success');
         } catch (err) {
             setError(err.response?.data?.message || 'Erreur lors de la création');
+            addToast('Erreur lors de la création de la facture', 'error');
         } finally {
             setSubmitting(false);
         }
@@ -81,8 +88,10 @@ const Invoices = () => {
             try {
                 await invoiceService.delete(id);
                 fetchData();
+                addToast('Facture supprimée avec succès', 'info');
             } catch (err) {
                 setError('Erreur lors de la suppression');
+                addToast('Impossible de supprimer la facture', 'error');
             }
         }
     };
@@ -92,9 +101,20 @@ const Invoices = () => {
             // On envoie l'objet entier pour éviter d'écraser les autres champs avec le PUT
             await invoiceService.update(invoice.id, { ...invoice, status: newStatus });
             fetchData();
+            addToast(`Statut mis à jour : ${newStatus}`, 'success');
         } catch (err) {
             setError('Erreur lors du changement de statut');
+            addToast('Erreur lors de la mise à jour du statut', 'error');
         }
+    };
+
+    const handlePreview = (invoice) => {
+        setSelectedInvoice(invoice);
+        setShowPreviewModal(true);
+    };
+
+    const handlePrint = () => {
+        window.print();
     };
 
     const addItem = () => {
@@ -247,6 +267,13 @@ const Invoices = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={() => handlePreview(invoice)}
+                                                    className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                                                    title="Télécharger / Imprimer"
+                                                >
+                                                    <span className="material-symbols-outlined text-xl">print</span>
+                                                </button>
                                                 {invoice.status !== 'paid' && (
                                                     <button
                                                         onClick={() => handleStatusChange(invoice, 'paid')}
@@ -486,6 +513,58 @@ const Invoices = () => {
                                     <p className="text-2xl font-bold text-purple-600">{formatCurrency(selectedInvoice.total)}</p>
                                 </div>
                             </div>
+                            <div className="pt-4 flex justify-end">
+                                <button
+                                    onClick={() => handleDownloadPdf(selectedInvoice)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors bg-purple-50 text-purple-600 hover:bg-purple-100"
+                                >
+                                    <span className="material-symbols-outlined">download</span>
+                                    Télécharger PDF
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowDetailModal(false);
+                                        handlePreview(selectedInvoice);
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors ml-2"
+                                >
+                                    <span className="material-symbols-outlined">print</span>
+                                    Version Imprimable
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Preview / Print Modal */}
+            {showPreviewModal && selectedInvoice && (
+                <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex justify-center z-[100] overflow-y-auto">
+                    <div className="min-h-screen w-full relative pt-16 pb-12 px-4 flex justify-center bg-transparent">
+                        
+                        {/* Toolbar */}
+                        <div className="fixed top-0 left-0 right-0 bg-white/10 backdrop-blur-md border-b border-white/10 p-4 flex justify-between items-center z-50 no-print text-white">
+                            <h3 className="font-bold text-lg">Aperçu Facture {selectedInvoice.invoice_number}</h3>
+                            <div className="flex gap-4">
+                                <button onClick={handlePrint} className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-lg transition-all">
+                                    <span className="material-symbols-outlined">print</span>
+                                    Imprimer / Enregistrer PDF
+                                </button>
+                                <button onClick={() => setShowPreviewModal(false)} className="flex items-center gap-2 px-5 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold backdrop-blur-sm transition-all">
+                                    <span className="material-symbols-outlined">close</span>
+                                    Fermer
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Invoice Content - Screen Preview */}
+                        <div className="w-full max-w-4xl mx-auto my-8 print:hidden">
+                            <InvoiceTemplate invoice={selectedInvoice} />
+                        </div>
+
+                        {/* Hidden Print Content */}
+                        <div className="hidden print:block print:w-full print:m-0">
+                            <PrintInvoice invoice={selectedInvoice} />
                         </div>
                     </div>
                 </div>

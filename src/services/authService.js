@@ -12,6 +12,17 @@ export const authService = {
         return { token: access_token, user: userResponse.data };
     },
 
+    async loginClient(email, password) {
+        const response = await API.post('/client/login', { email, password });
+        const { access_token } = response.data;
+        localStorage.setItem('token', access_token);
+        // Use a different endpoint or specific logic for client user data if needed
+        const userResponse = await API.get('/client/profile'); // Assuming a profile endpoint for clients
+        const clientData = { ...userResponse.data, role: 'client' }; // Force role
+        localStorage.setItem('user', JSON.stringify(clientData));
+        return { token: access_token, user: clientData };
+    },
+
     async register(name, email, password, password_confirmation) {
         const response = await API.post('/register', {
             name,

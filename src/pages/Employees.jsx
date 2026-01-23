@@ -37,10 +37,23 @@ const Employees = () => {
         e.preventDefault();
         setSubmitting(true);
         try {
+            // Split name into first_name and last_name
+            const nameParts = formData.name.trim().split(' ');
+            const lastName = nameParts.length > 1 ? nameParts.pop() : ''; // Last part is last name? Or first part? Usually backend handles it.
+            // Better: first part is first_name, rest is last_name
+            const firstName = nameParts.shift() || formData.name;
+            const finalLastName = nameParts.join(' ');
+
+            const payload = { 
+                ...formData, 
+                first_name: firstName,
+                last_name: finalLastName || 'Inconnu', // Fallback
+                base_salary: formData.base_salary === '' ? 0 : formData.base_salary 
+            };
             if (editingEmployee) {
-                await employeeService.update(editingEmployee.id, formData);
+                await employeeService.update(editingEmployee.id, payload);
             } else {
-                await employeeService.create(formData);
+                await employeeService.create(payload);
             }
             setShowModal(false);
             setEditingEmployee(null);
@@ -255,8 +268,8 @@ const Employees = () => {
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Salaire (FCFA)</label>
                                     <input
                                         type="number"
-                                        value={formData.base_salary}
-                                        onChange={(e) => setFormData({ ...formData, base_salary: parseFloat(e.target.value) })}
+                                        value={formData.base_salary === '' ? '' : formData.base_salary}
+                                        onChange={(e) => setFormData({ ...formData, base_salary: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                                         min="0"
                                         step="0.01"
                                         required

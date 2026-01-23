@@ -4,8 +4,10 @@ import { quoteService } from '../services/quoteService';
 import { clientService } from '../services/clientService';
 import { productService } from '../services/productService';
 import { formatCurrency } from '../utils/currency';
+import { useToast } from '../contexts/ToastContext';
 
 const Quotes = () => {
+    const { addToast } = useToast();
     const [quotes, setQuotes] = useState([]);
     const [clients, setClients] = useState([]);
     const [products, setProducts] = useState([]);
@@ -68,10 +70,10 @@ const Quotes = () => {
                 items: [{ product_id: '', quantity: 1, unit_price: 0 }]
             });
             fetchData();
-            setSuccess('Devis créé avec succès');
-            setTimeout(() => setSuccess(''), 3000);
+            addToast('Devis créé avec succès', 'success');
         } catch (err) {
             setError(err.response?.data?.message || 'Erreur lors de la création');
+            addToast('Erreur lors de la création du devis', 'error');
         } finally {
             setSubmitting(false);
         }
@@ -82,10 +84,10 @@ const Quotes = () => {
             try {
                 await quoteService.convertToInvoice(id);
                 fetchData();
-                setSuccess('Devis converti en facture avec succès');
-                setTimeout(() => setSuccess(''), 3000);
+                addToast('Devis converti en facture avec succès', 'success');
             } catch (err) {
                 setError('Erreur lors de la conversion');
+                addToast('Erreur lors de la conversion en facture', 'error');
             }
         }
     };
@@ -95,8 +97,10 @@ const Quotes = () => {
             try {
                 await quoteService.delete(id);
                 fetchData();
+                addToast('Devis supprimé avec succès', 'info');
             } catch (err) {
                 setError('Erreur lors de la suppression');
+                addToast('Impossible de supprimer le devis', 'error');
             }
         }
     };
@@ -105,8 +109,28 @@ const Quotes = () => {
         try {
             await quoteService.update(quote.id, { ...quote, status: newStatus });
             fetchData();
+            addToast(`Statut mis à jour : ${newStatus}`, 'success');
         } catch (err) {
             setError('Erreur lors du changement de statut');
+            addToast('Erreur lors de la mise à jour du statut', 'error');
+        }
+    };
+
+    const handleDownloadPdf = async (quote) => {
+        try {
+            const blob = await quoteService.downloadPdf(quote.id);
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Devis-${quote.quote_number}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            addToast('Téléchargement lancé', 'success');
+        } catch (err) {
+            console.error(err);
+            addToast('Erreur lors du téléchargement du PDF', 'error');
         }
     };
 
@@ -266,6 +290,13 @@ const Quotes = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={() => handleDownloadPdf(quote)}
+                                                    className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                                                    title="Télécharger PDF"
+                                                >
+                                                    <span className="material-symbols-outlined text-xl">download</span>
+                                                </button>
                                                 <button
                                                     onClick={() => { setSelectedQuote(quote); setShowDetailModal(true); }}
                                                     className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
@@ -493,6 +524,15 @@ const Quotes = () => {
                                     <p className="text-sm text-slate-500">Total</p>
                                     <p className="text-2xl font-bold text-purple-600">{formatCurrency(selectedQuote.total)}</p>
                                 </div>
+                            </div>
+                            <div className="pt-4 flex justify-end">
+                                <button
+                                    onClick={() => handleDownloadPdf(selectedQuote)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors bg-purple-50 text-purple-600 hover:bg-purple-100"
+                                >
+                                    <span className="material-symbols-outlined">download</span>
+                                    Télécharger PDF
+                                </button>
                             </div>
                         </div>
                     </div>

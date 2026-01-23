@@ -148,7 +148,46 @@ textarea {
 
 /* Print styles */
 @media print {
-    .no-print {
+    @page {
+        size: A4;
+        margin: 0;
+    }
+
+    body * {
+        visibility: hidden;
+    }
+
+    #printable-invoice-area,
+    #printable-invoice-area * {
+        visibility: visible;
+    }
+
+    #printable-invoice-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+        visibility: visible;
+    }
+
+    .no-print,
+    button,
+    nav,
+    .sidebar {
         display: none !important;
+    }
+
+    /* Ensure background colors are printed */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .print-color-exact {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 }

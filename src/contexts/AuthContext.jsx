@@ -36,6 +36,13 @@ export const AuthProvider = ({ children }) => {
         return result;
     };
 
+    const loginClient = async (email, password) => {
+        const result = await authService.loginClient(email, password);
+        setUser(result.user);
+        setIsAuthenticated(true);
+        return result;
+    };
+
     const register = async (name, email, password, password_confirmation) => {
         const result = await authService.register(name, email, password, password_confirmation);
         setUser(result.user);
@@ -54,6 +61,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         isAuthenticated,
         login,
+        loginClient,
         register,
         logout,
     };

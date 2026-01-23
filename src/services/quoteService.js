@@ -31,4 +31,9 @@ export const quoteService = {
         const response = await API.post(`/quotes/${id}/convert-to-invoice`);
         return response.data;
     },
+
+    async downloadPdf(id) {
+        const response = await API.get(`/quotes/${id}/pdf`, { responseType: 'blob' });
+        return response.data;
+    },
 };
